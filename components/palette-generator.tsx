@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { RefreshCw, Download, Copy, Check, ArrowLeft, Shuffle } from "lucide-react"
+import { RefreshCw, Download, Copy, Check, ArrowLeft, Shuffle, ImageDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Color, HarmonyMode, generatePaletteFromHex, hexToHsl, hslToHex, copyToClipboard } from "@/lib/color-utils"
 import { ColorSwatch } from "./color-swatch"
@@ -80,6 +80,50 @@ export function PaletteGenerator() {
     await copyToClipboard(css)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleDownloadImage = () => {
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    const swatchWidth = 200
+    const swatchHeight = 300
+    const labelHeight = 50
+    const padding = 20
+    
+    canvas.width = colors.length * swatchWidth
+    canvas.height = swatchHeight + labelHeight
+
+    // Draw each color swatch
+    colors.forEach((color, index) => {
+      const x = index * swatchWidth
+
+      // Draw color rectangle
+      ctx.fillStyle = color.hex
+      ctx.fillRect(x, 0, swatchWidth, swatchHeight)
+
+      // Draw label background
+      ctx.fillStyle = "#1a1a2e"
+      ctx.fillRect(x, swatchHeight, swatchWidth, labelHeight)
+
+      // Draw hex code text
+      ctx.fillStyle = "#ffffff"
+      ctx.font = "bold 16px monospace"
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      ctx.fillText(
+        color.hex.toUpperCase(),
+        x + swatchWidth / 2,
+        swatchHeight + labelHeight / 2
+      )
+    })
+
+    // Download the canvas as image
+    const link = document.createElement("a")
+    link.download = `chromatic-palette-${Date.now()}.png`
+    link.href = canvas.toDataURL("image/png")
+    link.click()
   }
 
   const handleBack = () => {
@@ -186,6 +230,19 @@ export function PaletteGenerator() {
               >
                 <Download className="w-4 h-4" />
                 <span className="hidden sm:inline">CSS</span>
+              </button>
+
+              <button
+                onClick={handleDownloadImage}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
+                  "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+                  "transition-all duration-300 hover:scale-105 active:scale-95"
+                )}
+                title="Download as image"
+              >
+                <ImageDown className="w-4 h-4" />
+                <span className="hidden sm:inline">Image</span>
               </button>
 
               <button
