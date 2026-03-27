@@ -1,37 +1,59 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { RefreshCw, Download, Copy, Check, Keyboard } from "lucide-react"
+import { RefreshCw, Download, Copy, Check, ArrowLeft, Shuffle } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Color, HarmonyMode, generatePalette, generateRandomHue, copyToClipboard } from "@/lib/color-utils"
+import { Color, HarmonyMode, generatePaletteFromHex, hexToHsl, hslToHex, copyToClipboard } from "@/lib/color-utils"
 import { ColorSwatch } from "./color-swatch"
 import { HarmonySelector } from "./harmony-selector"
+import { WelcomeScreen } from "./welcome-screen"
 
 export function PaletteGenerator() {
+  const [baseColor, setBaseColor] = useState<string | null>(null)
   const [colors, setColors] = useState<Color[]>([])
   const [lockedIndexes, setLockedIndexes] = useState<Set<number>>(new Set())
   const [harmonyMode, setHarmonyMode] = useState<HarmonyMode>("analogous")
   const [isGenerating, setIsGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [showShortcut, setShowShortcut] = useState(true)
 
-  const generateNewPalette = useCallback(() => {
+  const generateNewPalette = useCallback((hex: string, mode: HarmonyMode, locked: Set<number>, prevColors: Color[]) => {
     setIsGenerating(true)
     
     setTimeout(() => {
-      const baseHue = generateRandomHue()
-      const newPalette = generatePalette(baseHue, harmonyMode)
+      const newPalette = generatePaletteFromHex(hex, mode)
       
-      setColors((prevColors) => {
-        if (prevColors.length === 0) return newPalette
-        return newPalette.map((color, index) => 
-          lockedIndexes.has(index) ? prevColors[index] : color
-        )
-      })
+      if (prevColors.length === 0) {
+        setColors(newPalette)
+      } else {
+        setColors(newPalette.map((color, index) => 
+          locked.has(index) ? prevColors[index] : color
+        ))
+      }
       
       setIsGenerating(false)
     }, 150)
-  }, [harmonyMode, lockedIndexes])
+  }, [])
+
+  const handleColorSubmit = (hex: string) => {
+    setBaseColor(hex)
+    generateNewPalette(hex, harmonyMode, new Set(), [])
+  }
+
+  const handleRegenerate = () => {
+    if (!baseColor) return
+    generateNewPalette(baseColor, harmonyMode, lockedIndexes, colors)
+  }
+
+  const handleRandomize = () => {
+    // Generate a random base color
+    const randomHue = Math.floor(Math.random() * 360)
+    const randomSat = 60 + Math.random() * 25
+    const randomLight = 45 + Math.random() * 20
+    const newHex = hslToHex(randomHue, randomSat, randomLight)
+    setBaseColor(newHex)
+    setLockedIndexes(new Set())
+    generateNewPalette(newHex, harmonyMode, new Set(), [])
+  }
 
   const toggleLock = (index: number) => {
     setLockedIndexes((prev) => {
@@ -60,34 +82,38 @@ export function PaletteGenerator() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Initialize and keyboard handler
+  const handleBack = () => {
+    setBaseColor(null)
+    setColors([])
+    setLockedIndexes(new Set())
+  }
+
+  // Keyboard handler for space to regenerate
   useEffect(() => {
-    generateNewPalette()
-    
+    if (!baseColor) return
+
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.code === "Space" && !e.repeat && e.target === document.body) {
         e.preventDefault()
-        generateNewPalette()
+        handleRegenerate()
       }
     }
 
     window.addEventListener("keydown", handleKeyPress)
-    
-    // Hide shortcut hint after 5 seconds
-    const timer = setTimeout(() => setShowShortcut(false), 5000)
-    
-    return () => {
-      window.removeEventListener("keydown", handleKeyPress)
-      clearTimeout(timer)
-    }
-  }, [generateNewPalette])
+    return () => window.removeEventListener("keydown", handleKeyPress)
+  }, [baseColor, harmonyMode, lockedIndexes, colors])
 
-  // Regenerate when harmony mode changes
+  // Regenerate when harmony mode changes (only if we have a base color)
   useEffect(() => {
-    if (colors.length > 0) {
-      generateNewPalette()
+    if (baseColor && colors.length > 0) {
+      generateNewPalette(baseColor, harmonyMode, lockedIndexes, colors)
     }
   }, [harmonyMode])
+
+  // Show welcome screen if no base color is set
+  if (!baseColor) {
+    return <WelcomeScreen onColorSubmit={handleColorSubmit} />
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -95,12 +121,33 @@ export function PaletteGenerator() {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            {/* Logo */}
+            {/* Back & Logo */}
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <div className="w-4 h-4 rounded-full bg-primary-foreground" />
+              <button
+                onClick={handleBack}
+                className={cn(
+                  "p-2 rounded-full bg-secondary text-secondary-foreground",
+                  "hover:bg-secondary/80 transition-all duration-200",
+                  "hover:scale-105 active:scale-95"
+                )}
+                title="Start over"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                  <div className="w-4 h-4 rounded-full bg-primary-foreground" />
+                </div>
+                <h1 className="text-xl font-semibold text-foreground">Chromatic</h1>
               </div>
-              <h1 className="text-xl font-semibold text-foreground">Chromatic</h1>
+              {/* Base Color Indicator */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border">
+                <div 
+                  className="w-4 h-4 rounded-full"
+                  style={{ backgroundColor: baseColor }}
+                />
+                <span className="text-sm text-muted-foreground font-mono">{baseColor.toUpperCase()}</span>
+              </div>
             </div>
 
             {/* Harmony Mode Selector */}
@@ -142,7 +189,20 @@ export function PaletteGenerator() {
               </button>
 
               <button
-                onClick={generateNewPalette}
+                onClick={handleRandomize}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
+                  "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+                  "transition-all duration-300 hover:scale-105 active:scale-95"
+                )}
+                title="Random color"
+              >
+                <Shuffle className="w-4 h-4" />
+                <span className="hidden sm:inline">Random</span>
+              </button>
+
+              <button
+                onClick={handleRegenerate}
                 disabled={isGenerating}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
@@ -173,21 +233,6 @@ export function PaletteGenerator() {
           />
         ))}
       </main>
-
-      {/* Keyboard Shortcut Hint */}
-      <div
-        className={cn(
-          "fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
-          "flex items-center gap-2 px-4 py-2 rounded-full",
-          "bg-card/90 backdrop-blur-sm border border-border",
-          "text-sm text-muted-foreground",
-          "transition-all duration-500",
-          showShortcut ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
-        )}
-      >
-        <Keyboard className="w-4 h-4" />
-        Press <kbd className="px-2 py-0.5 rounded bg-secondary text-secondary-foreground font-mono text-xs">Space</kbd> to generate
-      </div>
     </div>
   )
 }

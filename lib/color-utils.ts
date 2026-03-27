@@ -152,3 +152,20 @@ export function getContrastColor(hex: string): string {
 export function copyToClipboard(text: string): Promise<void> {
   return navigator.clipboard.writeText(text)
 }
+
+export function generatePaletteFromHex(hex: string, mode: HarmonyMode): Color[] {
+  const hsl = hexToHsl(hex)
+  return generatePalette(hsl.h, mode)
+}
+
+export function isValidHex(hex: string): boolean {
+  return /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex)
+}
+
+export function normalizeHex(hex: string): string {
+  let normalized = hex.replace('#', '')
+  if (normalized.length === 3) {
+    normalized = normalized.split('').map(c => c + c).join('')
+  }
+  return `#${normalized.toLowerCase()}`
+}
