@@ -154,8 +154,94 @@ export function copyToClipboard(text: string): Promise<void> {
 }
 
 export function generatePaletteFromHex(hex: string, mode: HarmonyMode): Color[] {
-  const hsl = hexToHsl(hex)
-  return generatePalette(hsl.h, mode)
+  const baseHsl = hexToHsl(hex)
+  const normalizedHex = hex.startsWith('#') ? hex.toLowerCase() : `#${hex.toLowerCase()}`
+  
+  // Create the base color object from the user's exact input
+  const baseColor: Color = {
+    hex: normalizedHex,
+    hsl: baseHsl,
+    rgb: hexToRgb(normalizedHex),
+  }
+  
+  // Generate harmony colors based on the base hue
+  const baseSaturation = baseHsl.s
+  const baseLightness = baseHsl.l
+
+  let hues: number[] = []
+
+  switch (mode) {
+    case 'analogous':
+      hues = [
+        (baseHsl.h + 30) % 360,
+        (baseHsl.h + 60) % 360,
+        (baseHsl.h - 30 + 360) % 360,
+        (baseHsl.h - 60 + 360) % 360,
+      ]
+      break
+    case 'complementary':
+      hues = [
+        (baseHsl.h + 180) % 360,
+        (baseHsl.h + 15) % 360,
+        (baseHsl.h + 180 + 15) % 360,
+        (baseHsl.h - 15 + 360) % 360,
+      ]
+      break
+    case 'triadic':
+      hues = [
+        (baseHsl.h + 120) % 360,
+        (baseHsl.h + 240) % 360,
+        (baseHsl.h + 60) % 360,
+        (baseHsl.h + 180) % 360,
+      ]
+      break
+    case 'tetradic':
+      hues = [
+        (baseHsl.h + 90) % 360,
+        (baseHsl.h + 180) % 360,
+        (baseHsl.h + 270) % 360,
+        (baseHsl.h + 45) % 360,
+      ]
+      break
+    case 'split-complementary':
+      hues = [
+        (baseHsl.h + 150) % 360,
+        (baseHsl.h + 210) % 360,
+        (baseHsl.h + 30) % 360,
+        (baseHsl.h - 30 + 360) % 360,
+      ]
+      break
+    case 'monochromatic':
+      hues = [baseHsl.h, baseHsl.h, baseHsl.h, baseHsl.h]
+      break
+  }
+
+  // Generate the complementary colors
+  const harmonyColors = hues.map((hue, index) => {
+    let saturation = baseSaturation
+    let lightness = baseLightness
+
+    if (mode === 'monochromatic') {
+      // Vary lightness significantly for monochromatic
+      const lightnessSteps = [25, 40, 60, 75]
+      saturation = Math.max(20, Math.min(90, baseSaturation + (Math.random() - 0.5) * 10))
+      lightness = lightnessSteps[index] + (Math.random() - 0.5) * 5
+    } else {
+      // Add slight variation while staying harmonious
+      saturation = Math.max(30, Math.min(90, baseSaturation + (Math.random() - 0.5) * 15))
+      lightness = Math.max(30, Math.min(70, baseLightness + (Math.random() - 0.5) * 20))
+    }
+
+    const hex = hslToHex(hue, saturation, lightness)
+    return {
+      hex,
+      hsl: { h: hue, s: Math.round(saturation), l: Math.round(lightness) },
+      rgb: hexToRgb(hex),
+    }
+  })
+
+  // Always put the user's base color first
+  return [baseColor, ...harmonyColors]
 }
 
 export function isValidHex(hex: string): boolean {

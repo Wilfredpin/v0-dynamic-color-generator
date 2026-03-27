@@ -60,8 +60,16 @@ export function WelcomeScreen({ onColorSubmit }: WelcomeScreenProps) {
   const previewColor = isValidHex(inputValue) ? normalizeHex(inputValue) : pickerColor
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
-      <div className="w-full max-w-xl flex flex-col items-center gap-8">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
+      {/* Gradient Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/images/gradient-bg.jpg')" }}
+      />
+      {/* Dark Overlay for better text readability */}
+      <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" />
+      
+      <div className="relative z-10 w-full max-w-xl flex flex-col items-center gap-8">
         {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
