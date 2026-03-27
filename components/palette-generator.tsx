@@ -242,7 +242,7 @@ export function PaletteGenerator() {
                 title="Download as image"
               >
                 <ImageDown className="w-4 h-4" />
-                <span className="hidden sm:inline">Image</span>
+                <span className="hidden sm:inline">Download</span>
               </button>
 
               <button
